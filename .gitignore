@@ -94,3 +94,7 @@ models/cache/
 
 # === BACKUP STUBS ===
 agents/crypto_bot.bak.*
+
+# === CLAUDE CODE STATE ===
+.claude/
+
