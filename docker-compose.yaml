@@ -1,0 +1,436 @@
+# =============================================================================
+# axiom-orchestrator — docker-compose.yaml
+# Target: VPS Contabo Cloud VPS 30 NVMe (4 vCPU, 12 GB RAM)
+# Stack: PostgreSQL 16 + TimescaleDB | Redis 7 | n8n | 5 axiom services |
+#        crypto-bot + parameter_sync | nginx
+# =============================================================================
+# Versi terkini sesuai ARCHITECTURE.md section 5.1
+# =============================================================================
+
+name: axiom_core
+
+services:
+
+  # ===========================================================================
+  # PERSISTENT LAYER
+  # ===========================================================================
+
+  axiom_db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: axiom_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_ADMIN_USER:-aru_admin}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD}
+      POSTGRES_DB: axiom_memories
+    volumes:
+      - ./data/postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01_init_axiom.sql:ro
+      - ./init_cryptobot_db.sql:/docker-entrypoint-initdb.d/02_init_cryptobot.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"        # bind ke localhost saja, akses external via PgBouncer
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER:-aru_admin} -d axiom_memories"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+    networks:
+      - axiom-network
+    mem_limit: 3g
+    cpus: 1.0
+
+  axiom_redis:
+    image: redis:7-alpine
+    container_name: axiom_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 400mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - ./data/redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - axiom-network
+    mem_limit: 512m
+    cpus: 0.25
+
+  axiom_pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: axiom_pgbouncer
+    restart: unless-stopped
+    environment:
+      DB_HOST: axiom_db
+      DB_PORT: "5432"
+      DB_USER: ${DB_ADMIN_USER:-aru_admin}
+      DB_PASSWORD: ${DB_ADMIN_PASSWORD}
+      AUTH_TYPE: md5
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "200"
+      DEFAULT_POOL_SIZE: "25"
+      RESERVE_POOL_SIZE: "5"
+      RESERVE_POOL_TIMEOUT: "5"
+      SERVER_IDLE_TIMEOUT: "600"
+    ports:
+      - "127.0.0.1:6432:6432"
+    depends_on:
+      axiom_db:
+        condition: service_healthy
+    healthcheck:
+      # TCP check ke port 6432 — PgBouncer accept connection berarti up.
+      # edoburu image punya 'pg_isready' juga tapi targetnya backend, bukan pooler itu sendiri.
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 6432 || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - axiom-network
+    mem_limit: 64m
+    cpus: 0.05
+
+  # ===========================================================================
+  # WORKFLOW LAYER
+  # ===========================================================================
+
+  axiom_n8n:
+    image: n8nio/n8n:latest
+    container_name: axiom_n8n
+    restart: unless-stopped
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      N8N_HOST: ${N8N_HOST:-axiom_n8n}
+      N8N_PORT: "5678"
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://axiom_n8n:5678/webhook/}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: axiom_pgbouncer
+      DB_POSTGRESDB_PORT: "6432"
+      DB_POSTGRESDB_DATABASE: axiom_memories
+      DB_POSTGRESDB_USER: ${DB_USER_N8N:-n8n_user}
+      DB_POSTGRESDB_PASSWORD: ${DB_PASSWORD_N8N}
+    ports:
+      - "5678:5678"
+    volumes:
+      - ./data/n8n_data:/home/node/.n8n
+    depends_on:
+      axiom_db:
+        condition: service_healthy
+      axiom_pgbouncer:
+        condition: service_started
+    networks:
+      - axiom-network
+    mem_limit: 512m
+    cpus: 0.25
+
+  # ===========================================================================
+  # AXIOM LAYER
+  # ===========================================================================
+
+  axiom_brain:
+    build:
+      context: .
+      dockerfile: Dockerfile.brain
+    container_name: axiom_brain
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: axiom_pgbouncer
+      DB_PORT: "6432"
+      DB_NAME: ${DB_NAME_AXIOM:-axiom_memories}
+      DB_USER: ${DB_USER_AXIOM:-axiom_user}
+      DB_PASSWORD: ${DB_PASSWORD_AXIOM}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@axiom_redis:6379
+      OBSERVER_DB_USER: ${DB_USER_OBSERVER:-readonly_observer}
+      OBSERVER_DB_PASSWORD: ${DB_PASSWORD_OBSERVER}
+      OBSERVER_DB_NAME: ${DB_NAME_CRYPTOBOT:-cryptobot_db}
+    volumes:
+      - ./logs:/app/logs
+      - ./core_memory:/app/core_memory:ro
+      - ./knowledge:/app/knowledge:ro
+    depends_on:
+      axiom_db:
+        condition: service_healthy
+      axiom_redis:
+        condition: service_healthy
+      axiom_pgbouncer:
+        condition: service_started
+    healthcheck:
+      # Heartbeat file di-touch oleh main loop axiom_brain (lihat orchestrator.py).
+      # Kalau file tidak di-update >2 menit → unhealthy → docker restart container.
+      test: ["CMD-SHELL", "test -f /app/logs/heartbeat && find /app/logs/heartbeat -mmin -2 | grep -q . || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - axiom-network
+    mem_limit: 1g
+    cpus: 0.5
+
+  axiom_bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridge
+    container_name: axiom_bridge
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@axiom_redis:6379
+    depends_on:
+      axiom_redis:
+        condition: service_healthy
+    networks:
+      - axiom-network
+    mem_limit: 256m
+    cpus: 0.15
+
+  axiom_thanatos:
+    build:
+      context: .
+      dockerfile: Dockerfile.thanatos
+    container_name: axiom_thanatos
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@axiom_redis:6379
+      DB_HOST: axiom_pgbouncer
+      DB_PORT: "6432"
+      DB_NAME: ${DB_NAME_AXIOM:-axiom_memories}
+      DB_USER: ${DB_USER_AXIOM:-axiom_user}
+      DB_PASSWORD: ${DB_PASSWORD_AXIOM}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      axiom_redis:
+        condition: service_healthy
+      axiom_pgbouncer:
+        condition: service_started
+    networks:
+      - axiom-network
+    mem_limit: 256m
+    cpus: 0.15
+
+  axiom_telegram:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    container_name: axiom_telegram
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN_AXIOM}     # axiom-side bot token
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@axiom_redis:6379
+    depends_on:
+      axiom_redis:
+        condition: service_healthy
+    networks:
+      - axiom-network
+    mem_limit: 256m
+    cpus: 0.15
+
+  # --- NEW: AI Pattern Layer (Phase 3) ---
+  axiom_pattern:
+    build:
+      context: .
+      dockerfile: Dockerfile.pattern
+    container_name: axiom_pattern
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: axiom_pgbouncer
+      DB_PORT: "6432"
+      DB_NAME: ${DB_NAME_AXIOM:-axiom_memories}
+      DB_USER: ${DB_USER_AXIOM:-axiom_user}
+      DB_PASSWORD: ${DB_PASSWORD_AXIOM}
+      OBSERVER_DB_NAME: ${DB_NAME_CRYPTOBOT:-cryptobot_db}
+      OBSERVER_DB_USER: ${DB_USER_OBSERVER:-readonly_observer}
+      OBSERVER_DB_PASSWORD: ${DB_PASSWORD_OBSERVER}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@axiom_redis:6379
+      FEATURE_PATTERN_LAYER1_ENABLED: ${FEATURE_PATTERN_LAYER1_ENABLED:-false}
+      FEATURE_PATTERN_LAYER2_ENABLED: ${FEATURE_PATTERN_LAYER2_ENABLED:-false}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      axiom_pgbouncer:
+        condition: service_started
+      axiom_redis:
+        condition: service_healthy
+    networks:
+      - axiom-network
+    mem_limit: 1.5g
+    cpus: 0.75
+
+  # --- NEW: Dual-Brain Consensus Layer (Phase 3) ---
+  axiom_consensus:
+    build:
+      context: .
+      dockerfile: Dockerfile.consensus
+    container_name: axiom_consensus
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: axiom_pgbouncer
+      DB_PORT: "6432"
+      DB_NAME: ${DB_NAME_AXIOM:-axiom_memories}
+      DB_USER: ${DB_USER_AXIOM:-axiom_user}
+      DB_PASSWORD: ${DB_PASSWORD_AXIOM}
+      OBSERVER_DB_NAME: ${DB_NAME_CRYPTOBOT:-cryptobot_db}
+      OBSERVER_DB_USER: ${DB_USER_OBSERVER:-readonly_observer}
+      OBSERVER_DB_PASSWORD: ${DB_PASSWORD_OBSERVER}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}    # untuk tiebreaker Sonnet 4.6
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      axiom_pgbouncer:
+        condition: service_started
+    networks:
+      - axiom-network
+    mem_limit: 512m
+    cpus: 0.25
+
+  # ===========================================================================
+  # CRYPTO-BOT LAYER
+  # ===========================================================================
+
+  cryptobot_main:
+    build:
+      context: ./agents/crypto_bot
+      dockerfile: Dockerfile
+    container_name: cryptobot_main
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: axiom_pgbouncer
+      DB_PORT: "6432"
+      DB_NAME: ${DB_NAME_CRYPTOBOT:-cryptobot_db}
+      DB_USER: ${DB_USER_CRYPTOBOT:-cryptobot_user}
+      DB_PASSWORD: ${DB_PASSWORD_CRYPTOBOT}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@axiom_redis:6379
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN_CRYPTOBOT}    # crypto-bot's own token
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_SPENDING_LIMIT: ${ANTHROPIC_SPENDING_LIMIT:-30}
+      BYBIT_API_KEY: ${BYBIT_API_KEY}
+      BYBIT_API_SECRET: ${BYBIT_API_SECRET}
+      BYBIT_TESTNET: ${BYBIT_TESTNET:-true}
+      PAPER_TRADE: ${PAPER_TRADE:-true}
+      INITIAL_CAPITAL: ${INITIAL_CAPITAL:-213}
+      DAILY_TARGET_PCT: ${DAILY_TARGET_PCT:-3.0}
+      DRAWDOWN_LIMIT_PCT: ${DRAWDOWN_LIMIT_PCT:-15.0}
+      BOT_TIMEZONE: ${BOT_TIMEZONE:-Asia/Jakarta}
+      BOT_PIN_HASH: ${BOT_PIN_HASH}
+      FRONTEND_URL: ${FRONTEND_URL}
+    ports:
+      - "127.0.0.1:8000:8000"   # akses publik via nginx reverse proxy, bukan langsung
+    depends_on:
+      axiom_db:
+        condition: service_healthy
+      axiom_redis:
+        condition: service_healthy
+      axiom_pgbouncer:
+        condition: service_started
+    networks:
+      - axiom-network
+    volumes:
+      - ./logs/cryptobot:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s         # crypto-bot butuh waktu init schedulers
+    mem_limit: 1.5g
+    cpus: 0.75
+
+  # --- NEW: Parameter Sync Worker (Phase 4) ---
+  cryptobot_param_sync:
+    build:
+      context: ./agents/crypto_bot
+      dockerfile: Dockerfile     # image yang sama, command beda
+    container_name: cryptobot_param_sync
+    restart: unless-stopped
+    command: ["python", "-m", "axiom_sync.parameter_sync"]
+    env_file:
+      - .env
+    environment:
+      DB_HOST: axiom_pgbouncer
+      DB_PORT: "6432"
+      DB_NAME_CRYPTOBOT: ${DB_NAME_CRYPTOBOT:-cryptobot_db}
+      DB_NAME_AXIOM: ${DB_NAME_AXIOM:-axiom_memories}
+      DB_USER: ${DB_USER_PARAMSYNC:-parameter_sync_user}
+      DB_PASSWORD: ${DB_PASSWORD_PARAMSYNC}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@axiom_redis:6379
+      FEATURE_AUTO_PARAM_REWRITE: ${FEATURE_AUTO_PARAM_REWRITE:-false}
+      FEATURE_AUTO_CODE_REWRITE: ${FEATURE_AUTO_CODE_REWRITE:-false}
+    volumes:
+      - ./logs:/app/logs
+      - ./agents/crypto_bot:/app/cryptobot:ro
+    depends_on:
+      axiom_pgbouncer:
+        condition: service_started
+      axiom_redis:
+        condition: service_healthy
+    networks:
+      - axiom-network
+    mem_limit: 256m
+    cpus: 0.1
+
+  # ===========================================================================
+  # EDGE LAYER (Production only — di local dev bisa di-skip)
+  # ===========================================================================
+
+  axiom_nginx:
+    image: nginx:alpine
+    container_name: axiom_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro          # mount Let's Encrypt certs
+      - ./agents/crypto_bot/frontend/dist:/var/www/cryptobot:ro
+    depends_on:
+      cryptobot_main:
+        condition: service_healthy
+    networks:
+      - axiom-network
+    mem_limit: 128m
+    cpus: 0.05
+    profiles:
+      - production    # spin up via: docker compose --profile production up -d
+
+# =============================================================================
+# NETWORK
+# =============================================================================
+networks:
+  axiom-network:
+    driver: bridge
+    name: axiom-network
+
+# =============================================================================
+# Catatan service yang DIHAPUS dari versi lama:
+# - axiom_executioner: dihapus per Konflik 1 keputusan B (crypto-bot autonomous)
+# - axiom_observer (jika ada di compose lama): merged ke axiom_brain
+# =============================================================================

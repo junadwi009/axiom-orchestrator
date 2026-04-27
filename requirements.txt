@@ -1,0 +1,30 @@
+# ==============================================================================
+# PROJECT AXIOM: REQUIREMENTS (V2 - FIXED)
+# [FIXED]: Tambah psycopg2-binary (diperlukan database_handler.py)
+# [FIXED]: Tambah urllib3 eksplisit untuk retry di openclaw_bridge.py
+# ==============================================================================
+
+# --- INTI PENALARAN DEWAN ---
+pyautogen==0.2.20
+
+# --- SISTEM SARAF & MEMORI ---
+redis==5.0.1
+python-dotenv==1.0.0
+
+# --- DATABASE (SCRIBE) ---
+# [ADDED]: psycopg2-binary wajib ada agar database_handler.py tidak crash
+psycopg2-binary==2.9.9
+
+# --- MATA ALGOJO PASAR ---
+ccxt==4.1.92
+pandas==2.1.4
+
+# --- PENGHUBUNG JARINGAN ---
+requests==2.31.0
+urllib3==2.1.0
+
+# --- LLM API ---
+openai==1.10.0
+
+# --- TELINGA KEDAULATAN ---
+python-telegram-bot==20.7

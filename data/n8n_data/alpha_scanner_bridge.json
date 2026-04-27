@@ -1,0 +1,200 @@
+{
+  "name": "AXIOM_Alpha_Scanner_V3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trigger-alpha-scan",
+        "options": {}
+      },
+      "name": "Webhook_Bridge",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "proxy_url",
+              "value": "={{ $env.PROXY_URL }}"
+            }
+          ]
+        }
+      },
+      "name": "Nero_Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/search/trending",
+        "options": {}
+      },
+      "name": "Nero_Shadow_Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "coins",
+        "options": {}
+      },
+      "name": "Item Lists",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.item.market_cap_rank }}",
+              "operation": "smaller",
+              "value2": 500
+            }
+          ]
+        }
+      },
+      "name": "Kai_Risk_Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ares_market_scans (symbol, current_price, raw_ohlcv_snapshot) VALUES ($1, 0, $2);",
+        "options": {
+          "queryParameters": "={{ $json.item.symbol }}, {{ JSON.stringify($json.item) }}"
+        }
+      },
+      "name": "Atlas_Postgres_Persistence",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [1160, 160],
+      "credentials": {
+        "postgres": {
+          "id": "axiom_db_credentials",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "lpush",
+        "key": "telegram_to_orchestrator",
+        "value": "=Ada sinyal Alpha baru dari n8n! Koin: {{ $json.item.name }} ({{ $json.item.symbol }}). Rank: {{ $json.item.market_cap_rank }}. Segera mulai debat strategi untuk target compounding 9.1%!"
+      },
+      "name": "Trigger_Brain_Redis",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [1400, 160],
+      "credentials": {
+        "redis": {
+          "id": "axiom_redis_credentials",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=🌹 [VIOLET] Tuanku Aru, n8n baru saja menangkap anomali likuiditas pada koin *{{ $json.item.name }} ({{ $json.item.symbol }})*. Saya telah membangunkan Dewan untuk membedah potensi ini.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Violet_Telegram_Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1160, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "axiom_telegram_credentials",
+          "name": "Telegram Bot API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook_Bridge": {
+      "main": [
+        [
+          {
+            "node": "Nero_Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nero_Config": {
+      "main": [
+        [
+          {
+            "node": "Nero_Shadow_Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nero_Shadow_Scraper": {
+      "main": [
+        [
+          {
+            "node": "Item Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item Lists": {
+      "main": [
+        [
+          {
+            "node": "Kai_Risk_Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kai_Risk_Filter": {
+      "main": [
+        [
+          {
+            "node": "Atlas_Postgres_Persistence",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Violet_Telegram_Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atlas_Postgres_Persistence": {
+      "main": [
+        [
+          {
+            "node": "Trigger_Brain_Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

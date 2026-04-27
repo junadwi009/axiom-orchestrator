@@ -1,0 +1,4 @@
+[submodule "agents/crypto_bot"]
+	path = agents/crypto_bot
+	url = https://github.com/junadwi009/crypto-bot.git
+	branch = main

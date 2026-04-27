@@ -1,0 +1,47 @@
+axiom-orchestrator/
+├── .env                        # [SECRET] Kredensial API, Password DB, & Chat ID
+├── .gitignore                  # [SECURITY] Filter pencegah kebocoran data sensitif
+├── docker-compose.yaml         # [MASTER] Konfigurasi infrastruktur mandiri sekali klik
+├── Dockerfile.brain            # [CORE] Lingkungan raga untuk Orchestrator (Brain)
+├── orchestrator.py             # [CORE] Jantung AutoGen: Debat Dewan & Logika Utama
+├── requirements.txt            # [CORE] Nutrisi library (AutoGen, Redis, CCXT, dll)
+│
+├── agents/                     # [THE SQUAD: AGENTIC UNIT]
+│   ├── ares_analyzer.py        # [EYES] Analisis pasar, likuiditas, & whale gaps
+│   ├── kai_budgeting.py        # [WALLET] Kalkulator risiko & manajemen modal
+│   ├── openclaw_bridge.py      # [HANDS] Jembatan tugas otonom ke internet
+│   ├── telegram_gateway.py     # [EARS] Gerbang komunikasi eksklusif Aru
+│   ├── database_handler.py
+│   ├── thanatos_failover.py
+│   ├── knowledge_manager.py
+│   └── crypto_bot/             # [STRIKE] Bot eksekusi trading lokal di VPS
+│       ├── bot.py
+│       └── Dockerfile.bot      # Lingkungan raga bot eksekusi
+│
+│
+├── core_memory/                # [THE SOUL: PERSISTENT MEMORY]
+│   ├── 00_SOVEREIGN_SOUL.md    # [COMPRESSED] Intisari memori & hukum dasar
+│   ├── 01_Sovereign_Core.md    # [LAWS] Hukum kedaulatan Aru009
+│   ├── 02_Council_Personas_EXTREME.md # [PERSONAS] Karakter asli dewan tanpa sensor
+│   ├── 11_Mythos_Strategic_Portfolio.md # [BATTLE-PLAN] 10 Portofolio Crypto
+│   ├── 13_Red_Team_Strategy.md
+│   ├── mythos_high_quality_seed.jsonl # [DNA] Dataset kognitif hasil debat
+│   └── neural_patterns_library.jsonl  # [PATTERNS] Koleksi pola gaib AI-Only
+│
+├── data/                       # [PERSISTENCE: AUTO-CREATED]
+│   ├── postgres_data/          # Database PostgreSQL Lokal (Gratis)
+│       └── init.sql      
+│   └── n8n_data/               # Konfigurasi & workflow n8n (Self-hosted)
+│       └── alpha_scanner_bridge.json      
+│
+├── knowledge/
+│   ├── violet.md
+│   ├── asura.md
+│   ├── kai.md
+│   ├── thanatos.md
+│   ├── nero.md
+│   ├── eve.md
+│   ├── atlas.md
+│   └── ares.md
+│  
+└── logs/                       # [AUDIT] Jejak langkah eksekusi dewan

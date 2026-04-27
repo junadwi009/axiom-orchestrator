@@ -1,0 +1,23 @@
+# =============================================================================
+# userlist.txt (TEMPLATE)
+# Format: "username" "md5_hash_of_password+username"
+# =============================================================================
+# Cara generate hash:
+#   echo -n "passwordusername" | md5sum
+#   prefix dengan "md5" -> "md5<hash>"
+#
+# Contoh:
+#   echo -n "rahasia123axiom_user" | md5sum
+#   -> abc123def456...
+#   -> entry: "axiom_user" "md5abc123def456..."
+#
+# Pakai setup_local.sh / setup_local.ps1 untuk auto-generate.
+# JANGAN commit file ini dengan password asli ke git.
+# =============================================================================
+
+"axiom_user" "md5REPLACE_WITH_GENERATED_HASH"
+"cryptobot_user" "md5REPLACE_WITH_GENERATED_HASH"
+"readonly_observer" "md5REPLACE_WITH_GENERATED_HASH"
+"parameter_sync_user" "md5REPLACE_WITH_GENERATED_HASH"
+"n8n_user" "md5REPLACE_WITH_GENERATED_HASH"
+"pgbouncer_admin" "md5REPLACE_WITH_GENERATED_HASH"

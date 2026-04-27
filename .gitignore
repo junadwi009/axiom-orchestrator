@@ -1,0 +1,96 @@
+# =============================================================================
+# .gitignore — axiom-orchestrator + crypto-bot integrated stack
+# =============================================================================
+
+# === SECRETS & CREDENTIALS ===
+.env
+.env.local
+.env.production
+credentials.txt
+pgbouncer/userlist.txt
+*.pem
+*.key
+*.crt
+
+# === DOCKER VOLUMES (mounted ke host) ===
+data/postgres/
+data/redis/
+data/n8n/
+nginx/ssl/
+
+# === PYTHON ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === VENV ===
+venv/
+env/
+ENV/
+.venv/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# === LOGS ===
+logs/
+*.log
+*.log.*
+
+# === BACKUPS ===
+*.sql.bak
+backups/
+*.dump
+
+# === FRONTEND BUILD ARTIFACTS ===
+agents/crypto_bot/frontend/node_modules/
+agents/crypto_bot/frontend/dist/
+agents/crypto_bot/frontend/.vite/
+
+# === CRYPTO-BOT SUBMODULE ===
+# Submodule itu sendiri DI-TRACK (sebagai pointer di .gitmodules),
+# tapi file build/log di dalamnya tidak.
+agents/crypto_bot/__pycache__/
+agents/crypto_bot/logs/
+agents/crypto_bot/.env
+
+# === OS ===
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# === ML ARTIFACTS (axiom Layer 1-4) ===
+models/checkpoints/
+models/cache/
+*.pkl
+*.pt
+*.h5
+
+# === BACKUP STUBS ===
+agents/crypto_bot.bak.*
