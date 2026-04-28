@@ -57,6 +57,7 @@ else
     # Generator: 32-char alphanumeric password
     gen_pw() { openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32; }
 
+    PW_DB_ADMIN=$(gen_pw)
     PW_AXIOM=$(gen_pw)
     PW_CRYPTO=$(gen_pw)
     PW_OBSERVER=$(gen_pw)
@@ -67,6 +68,7 @@ else
     PW_N8N_BASIC=$(gen_pw)
 
     # Replace placeholders in .env
+    sed -i "s|REPLACE_DB_ADMIN_PW|$PW_DB_ADMIN|g" "$ENV_FILE"
     sed -i "s|REPLACE_AXIOM_DB_PW|$PW_AXIOM|g" "$ENV_FILE"
     sed -i "s|REPLACE_CRYPTOBOT_DB_PW|$PW_CRYPTO|g" "$ENV_FILE"
     sed -i "s|REPLACE_OBSERVER_DB_PW|$PW_OBSERVER|g" "$ENV_FILE"
@@ -77,7 +79,7 @@ else
     sed -i "s|REPLACE_N8N_BASIC_PW|$PW_N8N_BASIC|g" "$ENV_FILE"
 
     chmod 600 "$ENV_FILE"
-    ok "Generated 8 passwords. Tersimpan ke .env (chmod 600)."
+    ok "Generated 9 passwords. Tersimpan ke .env (chmod 600)."
 
     # Save plaintext credentials.txt untuk Aru — JANGAN COMMIT
     cat > "$ROOT_DIR/credentials.txt" <<EOF
@@ -86,6 +88,7 @@ else
 # JANGAN COMMIT FILE INI. Tambahkan ke .gitignore.
 # Password berikut sudah ter-inject ke .env. Simpan untuk recovery.
 # =============================================================================
+DB_ADMIN_PASSWORD=$PW_DB_ADMIN
 DB_PASSWORD_AXIOM=$PW_AXIOM
 DB_PASSWORD_CRYPTOBOT=$PW_CRYPTO
 DB_PASSWORD_OBSERVER=$PW_OBSERVER

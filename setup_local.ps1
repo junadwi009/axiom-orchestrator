@@ -52,6 +52,7 @@ if ((Test-Path $EnvFile) -and -not $Force) {
     }
 
     $passwords = @{
+        REPLACE_DB_ADMIN_PW     = New-Password
         REPLACE_AXIOM_DB_PW     = New-Password
         REPLACE_CRYPTOBOT_DB_PW = New-Password
         REPLACE_OBSERVER_DB_PW  = New-Password
@@ -78,7 +79,7 @@ if ((Test-Path $EnvFile) -and -not $Force) {
     $acl.SetAccessRule($rule)
     Set-Acl $EnvFile $acl
 
-    Log-Ok "8 password generated, .env permissions di-restrict."
+    Log-Ok "9 password generated, .env permissions di-restrict."
 
     # Save credentials.txt
     $credPath = Join-Path $RootDir "credentials.txt"
@@ -87,6 +88,7 @@ if ((Test-Path $EnvFile) -and -not $Force) {
 # credentials.txt - generated $(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ')
 # JANGAN COMMIT FILE INI. Tambahkan ke .gitignore.
 # =============================================================================
+DB_ADMIN_PASSWORD=$($passwords.REPLACE_DB_ADMIN_PW)
 DB_PASSWORD_AXIOM=$($passwords.REPLACE_AXIOM_DB_PW)
 DB_PASSWORD_CRYPTOBOT=$($passwords.REPLACE_CRYPTOBOT_DB_PW)
 DB_PASSWORD_OBSERVER=$($passwords.REPLACE_OBSERVER_DB_PW)
