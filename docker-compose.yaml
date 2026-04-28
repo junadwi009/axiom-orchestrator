@@ -133,6 +133,8 @@ services:
       - axiom-network
     mem_limit: 512m
     cpus: 0.25
+    profiles:
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
 
   # ===========================================================================
   # AXIOM LAYER
@@ -197,6 +199,8 @@ services:
       - axiom-network
     mem_limit: 256m
     cpus: 0.15
+    profiles:
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
 
   axiom_thanatos:
     build:
@@ -224,6 +228,8 @@ services:
       - axiom-network
     mem_limit: 256m
     cpus: 0.15
+    profiles:
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
 
   axiom_telegram:
     build:
@@ -244,6 +250,8 @@ services:
       - axiom-network
     mem_limit: 256m
     cpus: 0.15
+    profiles:
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
 
   # --- NEW: AI Pattern Layer (Phase 3) ---
   axiom_pattern:
@@ -277,6 +285,8 @@ services:
       - axiom-network
     mem_limit: 1.5g
     cpus: 0.75
+    profiles:
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
 
   # --- NEW: Dual-Brain Consensus Layer (Phase 3) ---
   axiom_consensus:
@@ -307,6 +317,8 @@ services:
       - axiom-network
     mem_limit: 512m
     cpus: 0.25
+    profiles:
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
 
   # ===========================================================================
   # CRYPTO-BOT LAYER
@@ -395,11 +407,15 @@ services:
       - axiom-network
     mem_limit: 256m
     cpus: 0.1
+    profiles:
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
 
   # ===========================================================================
   # EDGE LAYER (Production only — di local dev bisa di-skip)
   # ===========================================================================
 
+  # Edge layer — production deployment (Phase 2+).
+  # Activate: docker compose --profile production up -d
   axiom_nginx:
     image: nginx:alpine
     container_name: axiom_nginx
@@ -419,7 +435,7 @@ services:
     mem_limit: 128m
     cpus: 0.05
     profiles:
-      - production    # spin up via: docker compose --profile production up -d
+      - production
 
 # =============================================================================
 # NETWORK
