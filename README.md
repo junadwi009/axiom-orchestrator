@@ -25,7 +25,7 @@ Dua sistem otonom yang saling melengkapi, **bukan parent-child**:
 | Urutan | File                                                       | Untuk Apa                                                              |
 |--------|------------------------------------------------------------|------------------------------------------------------------------------|
 | 1      | [`CLAUDE_INSTRUCTIONS.md`](./CLAUDE_INSTRUCTIONS.md)       | Hard rules R1-R10, milestone M1-M4, urutan baca dokumen lain          |
-| 2      | [`ARCHITECTURE.md`](./ARCHITECTURE.md)                     | Filosofi sistem, 11-container Docker stack, alokasi resource VPS      |
+| 2      | [`ARCHITECTURE.md`](./ARCHITECTURE.md)                     | Filosofi sistem, 13-service Docker stack (5 core / 7 phase3plus / 1 production), alokasi resource VPS |
 | 3      | [`INTEGRATION_GUIDE.md`](./INTEGRATION_GUIDE.md)           | 3 channel A/B/C, patch proposal workflow, runbook 3 down-scenario     |
 | 4      | [`DATABASE_SCHEMA.md`](./DATABASE_SCHEMA.md)               | Skema 2 database, 5 role, hypertable TimescaleDB, migrasi Supabase    |
 | 5      | [`AI_CAPABILITIES.md`](./AI_CAPABILITIES.md)               | Layer 1-4 AI (pattern → anomaly → RL → self-modifying)                |
@@ -41,7 +41,7 @@ Dua sistem otonom yang saling melengkapi, **bukan parent-child**:
 ### Prereq
 - Docker Desktop (Windows) atau Docker Engine + Compose plugin (Ubuntu)
 - Git
-- 8 GB RAM minimum di mesin lokal (untuk full stack 11 containers)
+- RAM: M1 default cuma butuh 5 core services (~4-6 GB). Full stack 13 services (`--profile production --profile phase3plus`) butuh 8 GB minimum.
 - Credentials siap: OpenRouter, Anthropic, Bybit testnet, 2 token Telegram, chat_id
 
 ### Bootstrap (Ubuntu / WSL)
@@ -73,6 +73,17 @@ Script akan:
 - `BOT_PIN_HASH`
 
 Restart stack: `docker compose down && docker compose up -d`.
+
+### Deployment Modes (Profile Strategy)
+
+| Mode | Command | Services | Use Case |
+|---|---|---|---|
+| **M1 default** | `docker compose up -d` | 5 (axiom_db, axiom_redis, axiom_pgbouncer, axiom_brain, cryptobot_main) | Local dev validation (Phase 1) |
+| **M2 production** | `docker compose --profile production up -d` | 6 (5 core + axiom_nginx) | VPS Contabo deployment |
+| **M3 phase3plus dev** | `docker compose --profile phase3plus up -d` | 12 (5 core + 7 AI services) | Phase 3 AI capabilities dev |
+| **Full stack** | `docker compose --profile production --profile phase3plus up -d` | 13 (semua) | Production with all AI layers active |
+
+> ⚠️ Note: `docker compose config` akan emit warnings *"env file .env not found"* sebelum `setup_local.*` di-run. Ini expected — env_file directive di compose require physical file. Warning hilang setelah `.env` digenerate.
 
 ---
 
@@ -158,9 +169,13 @@ Folder yang **DILARANG dimodifikasi** oleh axiom auto-rewrite (R5):
 
 - ✅ Architecture decided (10/10 conflicts resolved)
 - ✅ Documentation complete (7 markdown files)
-- ✅ Docker compose + init SQL scripts ready
-- ✅ Setup scripts (Windows + Ubuntu) ready
+- ✅ Docker compose ready (5 core services for M1, 7 services profiled to phase3plus, 1 nginx profiled to production)
+- ✅ init.sql + init_cryptobot_db.sql ready (axiom_memories + cryptobot_db)
+- ✅ Setup scripts ready (setup_local.ps1 + setup_local.sh, generate 9 passwords)
+- ✅ Submodule agents/crypto_bot initialized at commit 7f2662d (heads/main)
+- ✅ .env.example regenerated with 9 placeholders + 10 manual-fill slots
 - ⏳ **Pending:** First bootstrap run on Aru's machine (M1)
+- ⏳ Pending: orchestrator.py refactor (Commit E — R6 fix + listener loop + heartbeat)
 - ⏳ Pending: Render → VPS migration (M2)
 - ⏳ Pending: AI Layer 1-2 implementation (M3)
 - ⏳ Pending: Self-improving loop activation (M4)
@@ -170,8 +185,8 @@ Folder yang **DILARANG dimodifikasi** oleh axiom auto-rewrite (R5):
 Untuk Aru:
 1. Clone repo ini ke local: `git clone <axiom-orchestrator-url>`.
 2. Run `./setup_local.sh` (Ubuntu) atau `.\setup_local.ps1` (Windows).
-3. Isi credentials manual di `.env`.
-4. Verifikasi `docker compose ps` semua healthy.
+3. Setup script generate 9 passwords (DB admin + 5 services + redis + n8n + pgbouncer admin) ke `.env` + `credentials.txt`. **Lalu isi 10 manual-fill di `.env`** (API keys, Telegram tokens, Bybit credentials, BOT_PIN_HASH bcrypt hash).
+4. Run `docker compose up -d` (default M1: 5 core services) → verifikasi `docker compose ps` semua healthy.
 5. Buka `http://localhost:8000/health` → harus return `{"status":"ok"}`.
 6. Tag tahap M1 selesai → lanjut ke [`MIGRATION_GUIDE.md`](./MIGRATION_GUIDE.md) untuk M2.
 

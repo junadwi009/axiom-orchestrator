@@ -145,6 +145,22 @@ Setiap kali axiom UPDATE/INSERT ke `strategy_params`, `pair_config`, atau tabel 
 
 ---
 
+## 🌳 WORKTREE CONVENTION
+
+Claude Code Anthropic by default bekerja di isolated worktree (`.claude/worktrees/<random-name>/`) untuk safety isolation, bukan di main checkout. Ini punya implikasi penting:
+
+1. **Submodule TIDAK shared antara main checkout dan worktree.** Setiap worktree baru WAJIB run `git submodule update --init --recursive` sebagai langkah pertama setelah dibuat. Tanpa ini, build context `cryptobot_main` akan gagal.
+
+2. **State git per worktree independen.** Branch di worktree (`claude/<name>`) berbeda dari main checkout. Status `git status`, `git submodule status`, dan `git log` bisa berbeda antar worktree.
+
+3. **Untuk drop worktree:** pastikan tidak ada uncommitted changes, lalu `git worktree remove <path>`. Setelah drop, working tree files dihapus tapi commit history tetap aman di `.git/modules/`.
+
+4. **Worktree stale:** worktree yang tidak di-touch >1 minggu berisiko outdated (origin/main mungkin sudah maju). Sebelum lanjut kerja di worktree lama, run `git fetch origin && git worktree repair` untuk sinkronkan.
+
+5. **Cross-worktree contamination:** JANGAN modify file di worktree A dari worktree B path. Setiap session Claude Code harus tetap dalam worktree-nya sendiri sampai siap commit + merge.
+
+---
+
 ## ✅ DEFINISI "DONE" PER MILESTONE
 
 ### Milestone M1 — Local Setup Validated (Hari 1)
@@ -276,9 +292,12 @@ Tanpa update ini, file `.md` jadi **misleading** dan sesi pengembangan berikutny
 - ✅ Frontend: React+Vite di-deploy ke VPS yang sama via nginx static
 - ✅ Deployment: Docker Compose only (deploy.sh PM2 deprecated)
 - ✅ Submodule: `agents/crypto_bot/` adalah git submodule ke `git@github.com:junadwi009/crypto-bot.git`
+- ✅ Worktree convention documented (this file, section above)
+- ✅ Profile strategy locked (5 core M1, 7 phase3plus, 1 production)
 - ⏳ Local setup belum tervalidasi — M1 milestone pending
 - ⏳ VPS Contabo belum di-provision — M2 milestone pending
 - ⏳ Anthropic API key untuk crypto-bot, OpenRouter key untuk axiom: belum konfirmasi tersedia
+- ⏳ Pending: orchestrator.py refactor + kai_budgeting daily_rate fix (Commit E)
 
 ---
 

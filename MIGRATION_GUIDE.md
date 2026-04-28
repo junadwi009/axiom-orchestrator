@@ -502,7 +502,7 @@ docker compose up -d
 # Verify all containers
 docker compose ps
 
-# Expected output: 11 containers, all "Up" status
+# Expected output: 6 containers (5 core + axiom_nginx via --profile production), all "Up" status
 
 # Watch logs untuk error:
 docker compose logs -f --tail=100

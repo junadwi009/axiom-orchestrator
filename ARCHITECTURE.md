@@ -219,7 +219,7 @@ Enforcement: pakai role/user terpisah di Postgres (mis. `axiom_user`, `cryptobot
 
 ### 5.1 Container Stack
 
-11 container dalam satu Docker network `axiom-network`:
+13 service dalam satu Docker network `axiom-network` (5 core M1 default + 7 phase3plus profile + 1 production profile):
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -362,7 +362,7 @@ Enforcement: pakai role/user terpisah di Postgres (mis. `axiom_user`, `cryptobot
 
 **Last sync:** 2026-04-27
 
-- ✅ Topology desain final ter-dokumentasi (11 container, axiom-network)
+- ✅ Topology desain final ter-dokumentasi (13 service total: 5 core M1 / 7 phase3plus / 1 production, axiom-network)
 - ✅ Database stack final: Postgres 16 + TimescaleDB + PgBouncer + Redis 7
 - ✅ Communication channels mapped (Redis BLPOP, pub/sub, listen/notify, REST, git commit)
 - ✅ Resource allocation target untuk VPS 30 NVMe (12 GB RAM)

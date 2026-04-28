@@ -117,7 +117,7 @@
   
   # Anthropic (untuk crypto-bot brain)
   ANTHROPIC_API_KEY=sk-ant-...
-  ANTHROPIC_SPENDING_LIMIT=5  # batas $5 untuk testing M1
+  ANTHROPIC_SPENDING_LIMIT=5  # M1 testing budget; default .env.example=30 untuk production
   
   # OpenRouter (untuk axiom council)
   OPENROUTER_API_KEY=sk-or-...
@@ -128,8 +128,10 @@
   TELEGRAM_CHAT_ID=...
   
   # Database (untuk M1, lokal Docker)
-  DB_HOST=localhost
-  DB_PORT=5432  # langsung ke axiom_db (PgBouncer di-skip untuk M1)
+  # Container service connect via Docker network hostname (default).
+  # Untuk akses dari host laptop (mis. python backtest.py atau psql direct), pakai DB_HOST=localhost DB_PORT=6432.
+  DB_HOST=axiom_pgbouncer
+  DB_PORT=6432
   DB_USER_AXIOM=axiom_user
   DB_PASSWORD_AXIOM=axiom_local_dev_password
   DB_USER_CRYPTOBOT=cryptobot_user
@@ -147,20 +149,19 @@
   DAILY_TARGET_PCT=3.0
   
   # Auth
-  BOT_PIN_HASH=  # generate dengan: python -c "import hashlib; print(hashlib.sha256('1234'.encode()).hexdigest())"
+  BOT_PIN_HASH=  # bcrypt hash, generate: python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PIN', bcrypt.gensalt()).decode())"
   ```
 - [ ] **Windows**: gunakan editor seperti VSCode atau Notepad++ untuk edit `.env` (jangan Notepad, dia tambah BOM)
 - [ ] **Ubuntu**: `nano .env` atau `vim .env`
 
 #### 1.5 Spin Up Docker Services
-- [ ] Pastikan `docker-compose.yaml` sudah update sesuai **[ARCHITECTURE.md](./ARCHITECTURE.md#5-deployment-topology)** section 5.1
-- [ ] Build images:
-  - **Windows / Ubuntu**: `docker compose build`
-- [ ] Start core services (db, redis, n8n) dulu:
+- [ ] Build images: `docker compose build`
+- [ ] **Note:** `docker compose config` akan emit warnings *"env file .env not found"* sampai `setup_local.*` di-run. Ini expected — env_file directive require physical file.
+- [ ] Start default M1 stack (5 core services):
   ```bash
-  docker compose up -d axiom_db axiom_redis axiom_n8n
+  docker compose up -d
   ```
-- [ ] Verify containers running: `docker ps` → harus ada 3 container UP
+- [ ] Verify containers running: `docker ps` → 5 service UP (axiom_db, axiom_redis, axiom_pgbouncer, axiom_brain, cryptobot_main)
 - [ ] Wait 30 detik untuk Postgres init complete, lalu verify:
   ```bash
   docker exec axiom_db psql -U aru_admin -d axiom_memories -c \
@@ -184,6 +185,13 @@
     "SELECT hypertable_name FROM timescaledb_information.hypertables;"
   ```
   Output expected: `trades, bot_events, news_items, claude_usage`
+
+- [ ] Seed `knowledge_base` table dengan persona protocols (one-shot manual):
+  ```bash
+  docker compose exec axiom_brain python -m agents.knowledge_manager
+  ```
+  Atau dari host (jika DB accessible via localhost): `python -m agents.knowledge_manager`
+- [ ] Verify seed: `docker exec axiom_db psql -U aru_admin -d axiom_memories -c "SELECT COUNT(*) FROM knowledge_base;"` should return ≥7 (7 persona files in `knowledge/`)
 
 #### 1.7 Start Crypto-bot
 - [ ] Crypto-bot pakai `.env` di root `agents/crypto_bot/.env` (terpisah dari axiom). Buat:
@@ -225,7 +233,7 @@
 
 #### 1.9 Validation M1
 - [ ] **Sukses M1 jika semua benar**:
-  - 3 Docker containers UP (db, redis, n8n)
+  - 5 Docker containers UP (axiom_db, axiom_redis, axiom_pgbouncer, axiom_brain, cryptobot_main)
   - Crypto-bot FastAPI healthcheck 200 OK
   - Crypto-bot trading loop logs cycle every 30s
   - Axiom orchestrator connected to DB
@@ -241,6 +249,19 @@
 | Telegram polling collision (dua bot beda token tapi sama chat_id) | Pastikan token berbeda, namespace command juga sebaiknya beda (axiom: `/ax_status`, cryptobot: `/cb_status`) |
 | Bybit testnet API key salah → connection error | Verify dengan `python -c "from pybit.unified_trading import HTTP; print(HTTP(testnet=True, api_key='X', api_secret='Y').get_wallet_balance(accountType='UNIFIED'))"` |
 | TimescaleDB extension tidak load | Image `timescale/timescaledb:latest-pg16` sudah include extension. Verify: `SELECT extname FROM pg_extension;` should include `timescaledb` |
+
+---
+
+## PHASE 1.5 — Pending Refactors (post-M1 cleanup)
+
+File yang perlu di-refactor sebelum service-nya di-aktifkan via phase3plus profile:
+
+- `agents/telegram_gateway.py` — rename env var `TELEGRAM_BOT_TOKEN` → `TELEGRAM_BOT_TOKEN_AXIOM`, ganti push target ke `axiom:command_queue` (sesuai INTEGRATION_GUIDE.md), butuh `Dockerfile.telegram`
+- `agents/thanatos_failover.py` — replace `print()` calls with Python `logging` (R8), butuh `Dockerfile.thanatos`
+- `agents/openclaw_bridge.py` — naming clarification (functional sebagai n8n webhook bridge, BUKAN Bybit executor seperti core_memory implication), butuh `Dockerfile.bridge`. Optional: rename file ke `n8n_bridge.py` untuk clarity.
+- `agents/database_handler.py` — rename default user `aru_admin` → `axiom_user` (legacy from pre-Konflik 2)
+
+Track via GitHub issues. **Tidak blocker M1** karena services di-profile ke phase3plus (default `docker compose up -d` tidak bring up).
 
 ---
 
@@ -356,8 +377,8 @@ chmod 600 /root/axiom_core/.env
 ```bash
 cd /root/axiom_core
 docker compose build
-docker compose up -d
-docker ps  # verify all 11 containers UP
+docker compose --profile production up -d
+docker compose ps  # verify 6 containers UP (5 core + axiom_nginx)
 ```
 
 ### 2.9 Setup Nginx + Let's Encrypt (Frontend Deployment)
@@ -390,7 +411,7 @@ cp -r dist/* /var/www/cryptobot/
 
 ### 2.10 Validation M2
 
-- [ ] All 11 containers UP and healthy
+- [ ] 6 containers UP and healthy via `--profile production` (5 core + axiom_nginx)
 - [ ] Crypto-bot Telegram bot respond
 - [ ] Axiom Telegram bot respond
 - [ ] Frontend dashboard accessible at https://your-domain.com
