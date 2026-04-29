@@ -1,3 +1,9 @@
+> **⚠️ PRE-RESOLUTION ARCHITECTURE LOG**
+>
+> Riwayat fix di file ini dari **era pre-Konflik 1-10**. Beberapa flow yang didescribekan (mis. `Telegram → telegram_to_orchestrator → orchestrator → bybit_execution_queue → bot.py Executioner`) sudah **superseded** oleh arsitektur baru. Keep untuk historical context, tapi untuk operational reference, baca: [ARCHITECTURE.md](./ARCHITECTURE.md), [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md).
+
+---
+
 # AXIOM CHANGELOG — V4 FIXED
 
 ## Ringkasan Perbaikan dari Analisis Review
