@@ -1,0 +1,36 @@
+﻿# Dockerfile.cryptobot
+# Build context: axiom-orchestrator root (path: .)
+# Crypto-bot submodule di-COPY dari agents/crypto_bot/
+# Per Opsi A: connect ke Supabase production (DB migration ke local Postgres deferred to Phase 1.5/M2)
+
+FROM python:3.11-slim
+
+# System dependencies untuk pandas-ta-classic, pybit, dll
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy requirements dulu untuk cache layer
+COPY agents/crypto_bot/requirements.txt .
+
+# Pip install (no cache untuk smaller image)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy seluruh crypto-bot source
+COPY agents/crypto_bot/ .
+
+# Logs directory (mounted via docker-compose volume)
+RUN mkdir -p /app/logs
+
+# Healthcheck: cryptobot expose /health endpoint per main.py
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+# Entry point: main.py contains uvicorn invocation + asyncio service orchestration
+CMD ["python", "main.py"]

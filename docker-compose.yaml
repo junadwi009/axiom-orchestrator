@@ -1,5 +1,5 @@
-# =============================================================================
-# axiom-orchestrator — docker-compose.yaml
+﻿# =============================================================================
+# axiom-orchestrator â€” docker-compose.yaml
 # Target: VPS Contabo Cloud VPS 30 NVMe (4 vCPU, 12 GB RAM)
 # Stack: PostgreSQL 16 + TimescaleDB | Redis 7 | n8n | 5 axiom services |
 #        crypto-bot + parameter_sync | nginx
@@ -87,7 +87,7 @@ services:
       axiom_db:
         condition: service_healthy
     healthcheck:
-      # TCP check ke port 6432 — PgBouncer accept connection berarti up.
+      # TCP check ke port 6432 â€” PgBouncer accept connection berarti up.
       # edoburu image punya 'pg_isready' juga tapi targetnya backend, bukan pooler itu sendiri.
       test: ["CMD-SHELL", "nc -z 127.0.0.1 6432 || exit 1"]
       interval: 20s
@@ -134,7 +134,7 @@ services:
     mem_limit: 512m
     cpus: 0.25
     profiles:
-      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) â€” see DEVELOPMENT_ROADMAP.md
 
   # ===========================================================================
   # AXIOM LAYER
@@ -171,7 +171,7 @@ services:
         condition: service_started
     healthcheck:
       # Heartbeat file di-touch oleh main loop axiom_brain (lihat orchestrator.py).
-      # Kalau file tidak di-update >2 menit → unhealthy → docker restart container.
+      # Kalau file tidak di-update >2 menit â†’ unhealthy â†’ docker restart container.
       test: ["CMD-SHELL", "test -f /app/logs/heartbeat && find /app/logs/heartbeat -mmin -2 | grep -q . || exit 1"]
       interval: 30s
       timeout: 5s
@@ -200,7 +200,7 @@ services:
     mem_limit: 256m
     cpus: 0.15
     profiles:
-      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) â€” see DEVELOPMENT_ROADMAP.md
 
   axiom_thanatos:
     build:
@@ -229,7 +229,7 @@ services:
     mem_limit: 256m
     cpus: 0.15
     profiles:
-      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) â€” see DEVELOPMENT_ROADMAP.md
 
   axiom_telegram:
     build:
@@ -251,7 +251,7 @@ services:
     mem_limit: 256m
     cpus: 0.15
     profiles:
-      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) â€” see DEVELOPMENT_ROADMAP.md
 
   # --- NEW: AI Pattern Layer (Phase 3) ---
   axiom_pattern:
@@ -286,7 +286,7 @@ services:
     mem_limit: 1.5g
     cpus: 0.75
     profiles:
-      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) â€” see DEVELOPMENT_ROADMAP.md
 
   # --- NEW: Dual-Brain Consensus Layer (Phase 3) ---
   axiom_consensus:
@@ -318,7 +318,7 @@ services:
     mem_limit: 512m
     cpus: 0.25
     profiles:
-      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) â€” see DEVELOPMENT_ROADMAP.md
 
   # ===========================================================================
   # CRYPTO-BOT LAYER
@@ -326,8 +326,10 @@ services:
 
   cryptobot_main:
     build:
-      context: ./agents/crypto_bot
-      dockerfile: Dockerfile
+      # Per Opsi A (Phase 1): crypto-bot Dockerfile lives in axiom root.
+      # Phase 1.5/M2: refactor database/client.py Supabase -> asyncpg.
+      context: .
+      dockerfile: Dockerfile.cryptobot
     container_name: cryptobot_main
     restart: unless-stopped
     env_file:
@@ -378,8 +380,10 @@ services:
   # --- NEW: Parameter Sync Worker (Phase 4) ---
   cryptobot_param_sync:
     build:
-      context: ./agents/crypto_bot
-      dockerfile: Dockerfile     # image yang sama, command beda
+      # Per Opsi A (Phase 1): crypto-bot Dockerfile lives in axiom root.
+      # Phase 1.5/M2: refactor database/client.py Supabase -> asyncpg.
+      context: .
+      dockerfile: Dockerfile.cryptobot     # image yang sama, command beda
     container_name: cryptobot_param_sync
     restart: unless-stopped
     command: ["python", "-m", "axiom_sync.parameter_sync"]
@@ -408,13 +412,13 @@ services:
     mem_limit: 256m
     cpus: 0.1
     profiles:
-      - phase3plus  # TODO: enable when Phase 3 starts (M3) — see DEVELOPMENT_ROADMAP.md
+      - phase3plus  # TODO: enable when Phase 3 starts (M3) â€” see DEVELOPMENT_ROADMAP.md
 
   # ===========================================================================
-  # EDGE LAYER (Production only — di local dev bisa di-skip)
+  # EDGE LAYER (Production only â€” di local dev bisa di-skip)
   # ===========================================================================
 
-  # Edge layer — production deployment (Phase 2+).
+  # Edge layer â€” production deployment (Phase 2+).
   # Activate: docker compose --profile production up -d
   axiom_nginx:
     image: nginx:alpine
