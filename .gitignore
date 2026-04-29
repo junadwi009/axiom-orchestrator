@@ -98,3 +98,7 @@ agents/crypto_bot.bak.*
 # === CLAUDE CODE STATE ===
 .claude/
 
+
+# Backup .env files (mengandung credential, jangan commit)
+.env.backup-*
+
