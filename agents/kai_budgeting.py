@@ -22,7 +22,7 @@ class KaiBudgeting:
         logger.info("⚖️ [KAI] Buku besar V4 Aktif.")
 
         self.initial_capital = float(os.getenv("INITIAL_CAPITAL", 213.0))
-        self.daily_rate = 0.02          # Target 2% harian (realistis untuk scalping)
+        self.daily_rate = float(os.getenv('DAILY_TARGET_PCT', 3.0)) / 100.0  # env-driven; default 3.0% per Konflik 10
         self.bybit_taker_fee = 0.00055  # Taker fee Bybit 0.055%
         self.drawdown_limit = 0.15      # 15% Drawdown Guillotine
 
@@ -142,7 +142,7 @@ class KaiBudgeting:
     def get_compounding_path(self, days: int = 30, daily_rate: float = None) -> list:
         """
         Proyeksi saldo dengan compounding rate tertentu.
-        Default menggunakan self.daily_rate (2%). Gunakan angka realistis.
+        Default menggunakan self.daily_rate (env-driven via DAILY_TARGET_PCT, default 3.0%). Gunakan angka realistis.
         """
         rate = daily_rate if daily_rate is not None else self.daily_rate
         return [

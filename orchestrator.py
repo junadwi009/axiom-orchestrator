@@ -1,7 +1,9 @@
 import os
+import sys
 import json
 import re
 import logging
+from datetime import datetime
 import autogen
 import redis
 from dotenv import load_dotenv
@@ -271,7 +273,9 @@ lalu kata HOLD_CONFIRMED.
                 f"🚀 [ARES] Keputusan Final: {signal['action']} {signal['symbol']} "
                 f"size_usd=${signal.get('size_usd', 0)}"
             )
-            self.redis.lpush("bybit_execution_queue", json.dumps(signal))
+            # R6: axiom is observer-only — no longer push to bybit_execution_queue.
+            # crypto-bot generates and executes signals autonomously via its own pipeline.
+            # axiom intervenes via Channel A/B/C (see ARCHITECTURE.md §4.2, INTEGRATION_GUIDE.md §3).
         elif signal and signal.get("action") == "HOLD":
             logger.info("🛡️ [ASURA] Keputusan: HOLD. Ke fase observasi.")
         else:
@@ -281,12 +285,70 @@ lalu kata HOLD_CONFIRMED.
         summary = self.kai_tool.get_session_summary()
         logger.info(f"📊 [KAI SESSION] {summary}")
 
+    # ------------------------------------------------------------------
+    # M1 SUPPORT: heartbeat + command handler stub
+    # ------------------------------------------------------------------
 
-# Diperlukan untuk import datetime di prompt
-from datetime import datetime
+    def write_heartbeat(self):
+        """
+        Atomic write of ISO 8601 timestamp ke /app/logs/heartbeat.
+        Compose healthcheck (lihat docker-compose.yaml) cek file ini di-update <2 menit.
+        """
+        try:
+            heartbeat_path = "/app/logs/heartbeat"
+            tmp_path = heartbeat_path + ".tmp"
+            with open(tmp_path, "w") as f:
+                f.write(datetime.utcnow().isoformat() + "Z")
+            os.replace(tmp_path, heartbeat_path)
+        except Exception as e:
+            logger.warning(f"Heartbeat write failed: {e}")
+
+    def handle_command(self, command: dict):
+        """
+        M1 stub command handler. Log received + ack ke axiom:command_response_queue.
+        Phase 3+ akan invoke AutoGen Council saat command type='council_deliberate'.
+        """
+        cmd_type = command.get("type", "unknown")
+        cmd_id = command.get("id", "no-id")
+        logger.info(f"📩 [ORCHESTRATOR] Received command type={cmd_type} id={cmd_id}")
+
+        response = {
+            "id": cmd_id,
+            "status": "received",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "note": "M1 stub — full handler in Phase 3"
+        }
+        try:
+            self.redis.lpush("axiom:command_response_queue", json.dumps(response))
+        except Exception as e:
+            logger.error(f"Failed to ack command {cmd_id}: {e}")
+
 
 if __name__ == "__main__":
+    import signal as os_signal  # aliased to avoid collision with local `signal` var in run_debate
+
     brain = SovereignOrchestrator()
-    capital = float(os.getenv("INITIAL_CAPITAL", 213.0))
-    logger.info("🧠 [SYSTEM] Orchestrator V4 Standby. Menunggu pemicu dari Redis...")
-    # brain.run_debate(symbol="BTC/USDT", current_balance=capital)
+
+    def handle_sigterm(signum, frame):
+        logger.info(f"Received signal {signum}, shutting down gracefully")
+        brain.write_heartbeat()
+        sys.exit(0)
+
+    os_signal.signal(os_signal.SIGTERM, handle_sigterm)
+    os_signal.signal(os_signal.SIGINT, handle_sigterm)
+
+    logger.info("🧠 [SYSTEM] axiom_brain ready, listening on axiom:command_queue")
+
+    while True:
+        try:
+            result = brain.redis.blpop("axiom:command_queue", timeout=5)
+            if result:
+                _, payload = result
+                command = json.loads(payload.decode() if isinstance(payload, bytes) else payload)
+                brain.handle_command(command)
+        except json.JSONDecodeError as e:
+            logger.error(f"Command parse error: {e}")
+        except Exception as e:
+            logger.error(f"Listener error: {e}", exc_info=True)
+
+        brain.write_heartbeat()
