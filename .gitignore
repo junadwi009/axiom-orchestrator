@@ -102,3 +102,7 @@ agents/crypto_bot.bak.*
 # Backup .env files (mengandung credential, jangan commit)
 .env.backup-*
 
+
+# Local utility scripts (no commit)
+regenerate_pinhash.ps1
+
