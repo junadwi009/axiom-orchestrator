@@ -28,7 +28,7 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/01_init_axiom.sql:ro
       - ./init_cryptobot_db.sql:/docker-entrypoint-initdb.d/02_init_cryptobot.sql:ro
     ports:
-      - "127.0.0.1:5432:5432"        # bind ke localhost saja, akses external via PgBouncer
+      - "127.0.0.1:5433:5432"        # host:5433 -> container:5432 (host 5432 occupied by postgresql-x64-17 service)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER:-aru_admin} -d axiom_memories"]
       interval: 10s
