@@ -16,7 +16,7 @@ python-dotenv==1.0.0
 psycopg2-binary==2.9.9
 
 # --- MATA ALGOJO PASAR ---
-ccxt==4.1.92
+ccxt==4.1.94
 pandas==2.1.4
 
 # --- PENGHUBUNG JARINGAN ---
