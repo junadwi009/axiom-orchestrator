@@ -8,8 +8,8 @@ import autogen
 import redis
 from dotenv import load_dotenv
 
-from ares_analyzer import AresAnalyzer
-from kai_budgeting import KaiBudgeting
+from agents.ares_analyzer import AresAnalyzer
+from agents.kai_budgeting import KaiBudgeting
 
 load_dotenv()
 logging.basicConfig(
