@@ -105,4 +105,9 @@ agents/crypto_bot.bak.*
 
 # Local utility scripts (no commit)
 regenerate_pinhash.ps1
+populate_passwords.ps1
+
+# Container runtime data (Postgres + Redis volume mounts) - NEVER commit
+data/
+RESUME_NOTE.md
 
