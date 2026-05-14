@@ -23,10 +23,19 @@ services:
       POSTGRES_USER: ${DB_ADMIN_USER:-aru_admin}
       POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD}
       POSTGRES_DB: axiom_memories
+      # Passwords for non-admin roles — consumed by 03_set_passwords.sh on first init.
+      # init.sql creates these users with PLACEHOLDER_* literals; the post-init shell
+      # script ALTER USERs them to real values from .env.
+      DB_PASSWORD_AXIOM: ${DB_PASSWORD_AXIOM}
+      DB_PASSWORD_CRYPTOBOT: ${DB_PASSWORD_CRYPTOBOT}
+      DB_PASSWORD_N8N: ${DB_PASSWORD_N8N}
+      DB_PASSWORD_OBSERVER: ${DB_PASSWORD_OBSERVER}
+      DB_PASSWORD_PARAMSYNC: ${DB_PASSWORD_PARAMSYNC}
     volumes:
       - ./data/postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01_init_axiom.sql:ro
       - ./init_cryptobot_db.sql:/docker-entrypoint-initdb.d/02_init_cryptobot.sql:ro
+      - ./set_passwords.sh:/docker-entrypoint-initdb.d/03_set_passwords.sh:ro
     ports:
       - "127.0.0.1:5433:5432"        # host:5433 -> container:5432 (host 5432 occupied by postgresql-x64-17 service)
     healthcheck:
