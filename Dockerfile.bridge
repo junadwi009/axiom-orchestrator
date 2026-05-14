@@ -1,0 +1,23 @@
+# Dockerfile.bridge — axiom_bridge service
+# Functionally: Redis -> n8n webhook bridge (NOT a Bybit executor; see openclaw_bridge.py docstring)
+# Activated via: docker compose --profile phase3plus up -d axiom_bridge
+# Roadmap: DEVELOPMENT_ROADMAP.md Phase 1.5 pending refactors (Dockerfile prereq)
+
+FROM python:3.10-slim
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Minimal deps for openclaw_bridge.py (no postgres, no ccxt needed)
+RUN pip install --no-cache-dir python-dotenv redis requests urllib3
+
+# Only the files this service actually needs (small image, fast rebuild)
+COPY agents/__init__.py agents/__init__.py
+COPY agents/openclaw_bridge.py agents/openclaw_bridge.py
+
+# Logs dir for FileHandler in openclaw_bridge.py (bridge.log)
+RUN mkdir -p /app/logs
+
+CMD ["python", "-m", "agents.openclaw_bridge"]

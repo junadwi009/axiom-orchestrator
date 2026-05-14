@@ -253,7 +253,8 @@ services:
     env_file:
       - .env
     environment:
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN_AXIOM}     # axiom-side bot token
+      # Pass-through axiom token directly (refactored telegram_gateway.py reads TELEGRAM_BOT_TOKEN_AXIOM)
+      TELEGRAM_BOT_TOKEN_AXIOM: ${TELEGRAM_BOT_TOKEN_AXIOM}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       REDIS_URL: redis://:${REDIS_PASSWORD}@axiom_redis:6379
     depends_on:

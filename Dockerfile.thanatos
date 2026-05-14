@@ -1,0 +1,23 @@
+# Dockerfile.thanatos — axiom_thanatos service
+# Functionally: Failover consumer for 'axiom_claw_tasks_failed' queue;
+#               alerts Aru via Telegram (bypassing n8n).
+# Activated via: docker compose --profile phase3plus up -d axiom_thanatos
+# Roadmap: DEVELOPMENT_ROADMAP.md Phase 1.5 pending refactors
+
+FROM python:3.10-slim
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Minimal deps for thanatos_failover.py (redis BLPOP + requests for Telegram API)
+RUN pip install --no-cache-dir python-dotenv redis requests
+
+COPY agents/__init__.py agents/__init__.py
+COPY agents/thanatos_failover.py agents/thanatos_failover.py
+
+# Logs dir for FileHandler in thanatos_failover.py (thanatos.log)
+RUN mkdir -p /app/logs
+
+CMD ["python", "-m", "agents.thanatos_failover"]

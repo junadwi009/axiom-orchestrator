@@ -1,0 +1,20 @@
+# Dockerfile.telegram — axiom_telegram service
+# Functionally: Axiom-side Telegram gateway (separate bot token from crypto-bot).
+#               Consumes Telegram messages -> pushes to 'axiom:command_queue' Redis list.
+# Activated via: docker compose --profile phase3plus up -d axiom_telegram
+# Roadmap: DEVELOPMENT_ROADMAP.md Phase 1.5 pending refactors
+
+FROM python:3.10-slim
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Minimal deps for telegram_gateway.py (python-telegram-bot v20+ async API)
+RUN pip install --no-cache-dir python-dotenv redis python-telegram-bot==20.7
+
+COPY agents/__init__.py agents/__init__.py
+COPY agents/telegram_gateway.py agents/telegram_gateway.py
+
+CMD ["python", "-m", "agents.telegram_gateway"]
