@@ -27,13 +27,21 @@ class DatabaseHandler:
 
     def _connect(self):
         """Membuka koneksi ke PostgreSQL dengan error handling."""
+        db_password = os.getenv("DB_PASSWORD")
+        if not db_password:
+            # Fail-fast pattern mirroring crypto-bot secret_guard.py:
+            # never accept missing/empty critical secret, never fall back to a hardcoded literal.
+            raise RuntimeError(
+                "DB_PASSWORD env var must be set (no fallback). "
+                "Check docker-compose env_file or environment block."
+            )
         try:
             self.conn = psycopg2.connect(
                 host=os.getenv("DB_HOST", "axiom_db"),
                 port=int(os.getenv("DB_PORT", "5432")),  # 5432 = direct postgres; 6432 = via pgbouncer (compose default)
                 database=os.getenv("DB_NAME", "axiom_memories"),
                 user=os.getenv("DB_USER", "aru_admin"),
-                password=os.getenv("DB_PASSWORD", "rahasia_aru_009"),
+                password=db_password,
                 connect_timeout=5
             )
             self.conn.autocommit = True
