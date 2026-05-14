@@ -66,6 +66,14 @@ CREATE TABLE IF NOT EXISTS knowledge_base (
 );
 CREATE INDEX IF NOT EXISTS idx_kb_entity  ON knowledge_base(entity_source);
 CREATE INDEX IF NOT EXISTS idx_kb_pattern ON knowledge_base(pattern_name);
+-- FTS index for protocol_content + logic_summary retrieval (knowledge_manager queries).
+-- Use 'simple' config (no language-specific stemming) since content is mixed Bahasa Indonesia + English.
+ALTER TABLE knowledge_base ADD COLUMN IF NOT EXISTS tsv tsvector
+    GENERATED ALWAYS AS (
+        to_tsvector('simple',
+            coalesce(protocol_content, '') || ' ' || coalesce(logic_summary, ''))
+    ) STORED;
+CREATE INDEX IF NOT EXISTS idx_kb_fts ON knowledge_base USING GIN(tsv);
 
 -- kai_ledger: audit harian dari Kai (CFO agent)
 CREATE TABLE IF NOT EXISTS kai_ledger (
