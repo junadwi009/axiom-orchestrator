@@ -25,7 +25,7 @@ set -e
 echo "[set_passwords] Replacing PLACEHOLDER passwords with real values..."
 
 # Verify required env vars are set (length-only check, no leak)
-for V in DB_PASSWORD_AXIOM DB_PASSWORD_CRYPTOBOT DB_PASSWORD_N8N DB_PASSWORD_OBSERVER DB_PASSWORD_PARAMSYNC; do
+for V in DB_PASSWORD_AXIOM DB_PASSWORD_CRYPTOBOT DB_PASSWORD_N8N DB_PASSWORD_OBSERVER DB_PASSWORD_PARAMSYNC DB_PASSWORD_PGBOUNCER_AUTH; do
   eval "VAL=\$$V"
   if [ -z "$VAL" ]; then
     echo "[set_passwords] FATAL: $V not set in container env" >&2
@@ -42,6 +42,7 @@ ALTER USER cryptobot_user PASSWORD '$DB_PASSWORD_CRYPTOBOT';
 ALTER USER n8n_user PASSWORD '$DB_PASSWORD_N8N';
 ALTER USER readonly_observer PASSWORD '$DB_PASSWORD_OBSERVER';
 ALTER USER parameter_sync_user PASSWORD '$DB_PASSWORD_PARAMSYNC';
+ALTER USER pgbouncer_auth PASSWORD '$DB_PASSWORD_PGBOUNCER_AUTH';
 RESET log_statement;
 RESET log_min_duration_statement;
 EOSQL

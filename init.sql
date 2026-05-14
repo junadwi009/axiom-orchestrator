@@ -39,12 +39,36 @@ BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'n8n_user') THEN
         CREATE USER n8n_user WITH PASSWORD 'PLACEHOLDER_N8N_PASSWORD';
     END IF;
+    -- Phase 1.5 Stack-B Item 3: dedicated pgbouncer auth_user (no superuser for pooler)
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'pgbouncer_auth') THEN
+        CREATE USER pgbouncer_auth WITH PASSWORD 'PLACEHOLDER_PGBOUNCER_AUTH_PASSWORD';
+    END IF;
 END
 $$;
 
 -- ⚠️  PENTING: Ganti PLACEHOLDER_* dengan password actual via:
 -- ALTER USER axiom_user WITH PASSWORD '...';
--- Run script set_passwords.sql setelah init selesai.
+-- Run script set_passwords.sh setelah init selesai (auto-executed by docker-entrypoint).
+
+-- =============================================================================
+-- PGBOUNCER AUTH SUPPORT (Phase 1.5 Stack-B Item 3)
+-- =============================================================================
+-- Dedicated schema + SECURITY DEFINER function so pgbouncer can run auth_query
+-- with a non-superuser. Pattern from Crunchy Data:
+-- https://www.crunchydata.com/blog/pgbouncer-scram-authentication-postgresql
+CREATE SCHEMA IF NOT EXISTS pgbouncer;
+CREATE OR REPLACE FUNCTION pgbouncer.get_auth(p_username TEXT)
+    RETURNS TABLE(username TEXT, password TEXT)
+    LANGUAGE sql
+    SECURITY DEFINER
+AS $func$
+    SELECT usename::TEXT, passwd::TEXT
+    FROM pg_catalog.pg_shadow
+    WHERE usename = p_username;
+$func$;
+REVOKE ALL ON FUNCTION pgbouncer.get_auth(TEXT) FROM PUBLIC;
+GRANT USAGE ON SCHEMA pgbouncer TO pgbouncer_auth;
+GRANT EXECUTE ON FUNCTION pgbouncer.get_auth(TEXT) TO pgbouncer_auth;
 
 -- =============================================================================
 -- AXIOM_MEMORIES — TABEL EXISTING (dari init.sql v2 axiom)

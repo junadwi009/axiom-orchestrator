@@ -31,6 +31,7 @@ services:
       DB_PASSWORD_N8N: ${DB_PASSWORD_N8N}
       DB_PASSWORD_OBSERVER: ${DB_PASSWORD_OBSERVER}
       DB_PASSWORD_PARAMSYNC: ${DB_PASSWORD_PARAMSYNC}
+      DB_PASSWORD_PGBOUNCER_AUTH: ${DB_PASSWORD_PGBOUNCER_AUTH}
     volumes:
       - ./data/postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01_init_axiom.sql:ro
@@ -82,11 +83,11 @@ services:
       DB_HOST: axiom_db
       DB_PORT: "5432"
       LISTEN_PORT: "6432"
-      DB_USER: ${DB_ADMIN_USER:-aru_admin}
-      DB_PASSWORD: ${DB_ADMIN_PASSWORD}
+      DB_USER: ${DB_USER_PGBOUNCER_AUTH:-pgbouncer_auth}
+      DB_PASSWORD: ${DB_PASSWORD_PGBOUNCER_AUTH}
       AUTH_TYPE: scram-sha-256
-      AUTH_USER: ${DB_ADMIN_USER:-aru_admin}
-      AUTH_QUERY: "SELECT usename, passwd FROM pg_shadow WHERE usename=$$1"
+      AUTH_USER: ${DB_USER_PGBOUNCER_AUTH:-pgbouncer_auth}
+      AUTH_QUERY: "SELECT username, password FROM pgbouncer.get_auth($$1)"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: "200"
       DEFAULT_POOL_SIZE: "25"
