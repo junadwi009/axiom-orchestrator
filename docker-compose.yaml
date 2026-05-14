@@ -76,6 +76,8 @@ services:
       DB_USER: ${DB_ADMIN_USER:-aru_admin}
       DB_PASSWORD: ${DB_ADMIN_PASSWORD}
       AUTH_TYPE: scram-sha-256
+      AUTH_USER: ${DB_ADMIN_USER:-aru_admin}
+      AUTH_QUERY: "SELECT usename, passwd FROM pg_shadow WHERE usename=$$1"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: "200"
       DEFAULT_POOL_SIZE: "25"
