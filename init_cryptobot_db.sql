@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS news_items (
     id              BIGSERIAL,
     source          TEXT        NOT NULL,
     headline        TEXT        NOT NULL,
-    url             TEXT        UNIQUE,
+    url             TEXT,                       -- dedup at app level (UNIQUE incompatible w/ TimescaleDB hypertable partitioning on fetched_at)
     pairs_affected  TEXT[]      NOT NULL DEFAULT '{}',
     sentiment_score NUMERIC(4,3),         -- -1.0 to +1.0
     urgency_score   NUMERIC(4,3),         -- 0.0 to 1.0 (haiku output)
