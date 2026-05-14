@@ -21,13 +21,20 @@ class TelegramGateway:
     Tugas: Menerima perintah Telegram, memvalidasi identitas, dan meneruskannya ke Otak AutoGen.
     """
     def __init__(self):
-        self.token = os.getenv("TELEGRAM_BOT_TOKEN")
+        # Axiom-side telegram bot — separate token from crypto-bot's TELEGRAM_BOT_TOKEN_CRYPTOBOT
+        self.token = os.getenv("TELEGRAM_BOT_TOKEN_AXIOM")
         # Keamanan Mutlak: Hanya ID Tuanku Aru yang diizinkan memberi perintah
         try:
             self.aru_id = int(os.getenv("TELEGRAM_CHAT_ID", "0"))
         except ValueError:
             self.aru_id = 0
             logger.error("⚠️ [GATEWAY] TELEGRAM_CHAT_ID tidak valid. Mode Kunci Total Aktif.")
+        # Fail-fast on missing required env (mirror secret_guard pattern)
+        if self.aru_id == 0:
+            raise RuntimeError(
+                "TELEGRAM_CHAT_ID must be set to authorized chat id (no fallback). "
+                "Aborting to prevent silent auth bypass."
+            )
 
         # Koneksi ke tulang punggung memori
         self.redis = redis.from_url(
@@ -51,7 +58,8 @@ class TelegramGateway:
 
         # Mendorong (Push) titah ke antrean Redis agar diambil oleh Orchestrator
         try:
-            self.redis.lpush("telegram_to_orchestrator", command_text)
+            # Cap command length to prevent queue flood DoS (per IT Sec audit P1)
+            self.redis.lpush("axiom:command_queue", command_text[:4096])
             
             # Balasan dari Violet sebagai tanda kepatuhan
             await update.message.reply_text(
@@ -68,10 +76,10 @@ class TelegramGateway:
         Membangkitkan raga pendengaran bot.
         """
         if not self.token:
-            logger.error("❌ [GATEWAY] TELEGRAM_BOT_TOKEN tidak ditemukan. Gateway mati.")
+            logger.error("❌ [GATEWAY] TELEGRAM_BOT_TOKEN_AXIOM tidak ditemukan. Gateway mati.")
             return
 
-        print("📡 [GATEWAY] Telinga Kedaulatan Aktif. Menunggu suara Tuanku Aru...")
+        logger.info("📡 [GATEWAY] Telinga Kedaulatan Aktif. Menunggu suara Tuanku Aru...")
         
         # Membangun aplikasi bot
         application = Application.builder().token(self.token).build()

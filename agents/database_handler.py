@@ -40,7 +40,7 @@ class DatabaseHandler:
                 host=os.getenv("DB_HOST", "axiom_db"),
                 port=int(os.getenv("DB_PORT", "5432")),  # 5432 = direct postgres; 6432 = via pgbouncer (compose default)
                 database=os.getenv("DB_NAME", "axiom_memories"),
-                user=os.getenv("DB_USER", "aru_admin"),
+                user=os.getenv("DB_USER", "axiom_user"),  # app default (non-priv); aru_admin only for DDL
                 password=db_password,
                 connect_timeout=5
             )

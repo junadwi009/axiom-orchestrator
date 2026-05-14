@@ -22,7 +22,18 @@ logger = logging.getLogger("OpenClawBridge")
 
 class OpenClawBridge:
     """
-    [HANDS] Saraf Motorik — Jembatan Redis → n8n Webhook.
+    [HANDS] Saraf Motorik — Jembatan Redis → n8n Webhook (BUKAN Bybit executor).
+
+    Naming clarification (Phase 1.5 per DEVELOPMENT_ROADMAP.md):
+    The "OpenClaw" name is historical (pre-Konflik 2 nomenclature). This class is
+    functionally an *n8n webhook bridge* — it consumes 'axiom_claw_tasks' from Redis
+    and POSTs each task to the configured n8n webhook URL. It does NOT place orders
+    on any exchange. Exchange order placement happens in crypto-bot (cryptobot_main
+    container) via pybit.
+
+    File rename to `n8n_bridge.py` deferred until Phase 3+ (when this service is
+    actually activated via the phase3plus profile + Dockerfile.bridge).
+
     [FIXED V3]:
     - Logging standar ke file logs/bridge.log
     - Retry strategy tetap dipertahankan (sudah solid)
